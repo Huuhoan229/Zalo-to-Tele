@@ -79,7 +79,9 @@ export class TelegramBridgeBot {
 
   async ensureTopicForZaloMessage(zaloMessage) {
     const existing = this.store.getByConversation(zaloMessage.conversationId);
-    if (existing) return existing;
+    if (existing) {
+      return this.refreshTopicTitle(existing, zaloMessage);
+    }
 
     const topic = await this.bot.telegram.createForumTopic(
       this.config.telegramForumChatId,
@@ -91,6 +93,25 @@ export class TelegramBridgeBot {
       threadType: zaloMessage.threadType,
       topicId: topic.message_thread_id,
       title: zaloMessage.title,
+    });
+  }
+
+  async refreshTopicTitle(existing, zaloMessage) {
+    const nextTitle = zaloMessage.title || existing.title;
+    if (!nextTitle || nextTitle === existing.title) return existing;
+
+    try {
+      await this.bot.telegram.editForumTopic(this.config.telegramForumChatId, existing.topicId, {
+        name: topicName(nextTitle),
+      });
+    } catch (error) {
+      this.logger.warn({ error, topicId: existing.topicId }, 'Could not rename Telegram topic.');
+      return existing;
+    }
+
+    return this.store.upsertMapping({
+      ...existing,
+      title: nextTitle,
     });
   }
 

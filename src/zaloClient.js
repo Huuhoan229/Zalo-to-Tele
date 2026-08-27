@@ -21,14 +21,26 @@ function pickSenderName(message) {
   );
 }
 
-function pickConversationTitle(message) {
+function pickConversationTitle(message, isGroup) {
+  if (isGroup) {
+    return (
+      message.data?.threadName ||
+      message.data?.groupName ||
+      message.data?.groupTitle ||
+      message.threadName ||
+      message.groupName ||
+      message.title ||
+      `Zalo group ${message.threadId}`
+    );
+  }
+
   return (
-    message.data?.threadName ||
-    message.data?.groupName ||
     message.data?.dName ||
+    message.data?.threadName ||
+    message.data?.displayName ||
     message.threadName ||
     message.title ||
-    `Zalo ${message.threadId}`
+    `Zalo user ${message.threadId}`
   );
 }
 
@@ -101,7 +113,7 @@ export class ZaloClient {
     this.api.listener.on('message', async (message) => {
       try {
         if (message.isSelf) return;
-        await handler(this.normalizeMessage(message));
+        await handler(await this.normalizeMessage(message));
       } catch (error) {
         this.logger.error({ error, message }, 'Failed to handle Zalo message');
       }
@@ -110,20 +122,36 @@ export class ZaloClient {
     this.api.listener.start();
   }
 
-  normalizeMessage(message) {
+  async normalizeMessage(message) {
     const content = message.data?.content;
     const attachment = normalizeAttachment(content);
+    const isGroup = message.type === ThreadType.Group;
+
     return {
       id: message.data?.msgId || message.messageId || `${message.threadId}-${Date.now()}`,
       conversationId: String(message.threadId),
       threadType: message.type,
-      isGroup: message.type === ThreadType.Group,
+      isGroup,
       senderName: pickSenderName(message),
-      title: pickConversationTitle(message),
+      title: await this.resolveConversationTitle(message, isGroup),
       text: pickText(content),
       attachment,
       raw: message,
     };
+  }
+
+  async resolveConversationTitle(message, isGroup) {
+    if (!isGroup) return pickConversationTitle(message, false);
+
+    try {
+      const response = await this.api.getGroupInfo(String(message.threadId));
+      const group = response?.gridInfoMap?.[String(message.threadId)];
+      if (group?.name) return group.name;
+    } catch (error) {
+      this.logger.warn({ error, threadId: message.threadId }, 'Could not fetch Zalo group name; using message fallback.');
+    }
+
+    return pickConversationTitle(message, true);
   }
 
   async sendText({ conversationId, threadType, text }) {
