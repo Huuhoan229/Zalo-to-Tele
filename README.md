@@ -59,6 +59,8 @@ The old console runner is still available:
 npm run cli
 ```
 
+To launch without a visible console window on Windows, double-click `launch-hidden.vbs`.
+
 For first Zalo login, the app uses `auto` by default: saved cookie first, QR if no session exists. The app writes the QR to:
 
 ```text

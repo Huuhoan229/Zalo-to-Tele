@@ -157,9 +157,9 @@ function wireManager() {
 app.whenReady().then(async () => {
   try {
     await manager.load();
+    wireManager();
     await createWindow();
     setupTray();
-    wireManager();
     await manager.startAll();
     if (mainWindow?.webContents) {
       mainWindow.webContents.send('state-updated', manager.getState());
