@@ -124,7 +124,6 @@ export class ZaloClient {
 
     this.api.listener.on('message', async (message) => {
       try {
-        if (message.isSelf) return;
         await handler(await this.normalizeMessage(message));
       } catch (error) {
         this.logger.error({ error, message }, 'Failed to handle Zalo message');
@@ -148,6 +147,7 @@ export class ZaloClient {
       conversationId: String(message.threadId),
       threadType: message.type,
       isGroup,
+      isSelf: Boolean(message.isSelf),
       senderName: pickSenderName(message),
       title: await this.resolveConversationTitle(message, isGroup),
       text: pickText(content),

@@ -119,6 +119,9 @@ export class TelegramBridgeBot {
   async forwardZaloMessage(zaloMessage) {
     const mapping = await this.ensureTopicForZaloMessage(zaloMessage);
     const options = { message_thread_id: mapping.topicId };
+    const direction = zaloMessage.isSelf ? 'out' : 'in';
+    const source = zaloMessage.isSelf ? 'zalo-self' : 'zalo';
+    const senderName = zaloMessage.senderName;
 
     if (zaloMessage.attachment?.url) {
       try {
@@ -139,9 +142,9 @@ export class TelegramBridgeBot {
         );
       }
       await this.onTranscript?.(mapping, {
-        direction: 'in',
-        source: 'zalo',
-        senderName: zaloMessage.senderName,
+        direction,
+        source,
+        senderName,
         text: zaloMessage.text,
         attachment: zaloMessage.attachment,
         threadType: zaloMessage.threadType,
@@ -155,9 +158,9 @@ export class TelegramBridgeBot {
       options,
     );
     await this.onTranscript?.(mapping, {
-      direction: 'in',
-      source: 'zalo',
-      senderName: zaloMessage.senderName,
+      direction,
+      source,
+      senderName,
       text: zaloMessage.text,
       attachment: zaloMessage.attachment,
       threadType: zaloMessage.threadType,

@@ -22,6 +22,7 @@ export class BridgeController extends EventEmitter {
     this.status = 'idle';
     this.lastError = null;
     this.startedAt = null;
+    this.pendingEchoes = new Map();
     this.ready = this.store.load();
   }
 
@@ -61,6 +62,10 @@ export class BridgeController extends EventEmitter {
       });
 
       this.zalo.onMessage(async (message) => {
+        if (message.isSelf && this.consumePendingEcho(message.conversationId)) {
+          return;
+        }
+
         await this.telegram.forwardZaloMessage(message);
       });
 
@@ -111,15 +116,49 @@ export class BridgeController extends EventEmitter {
     return stored;
   }
 
+  registerPendingEcho(conversationId) {
+    const key = String(conversationId);
+    const current = this.pendingEchoes.get(key) || { count: 0, expiresAt: 0 };
+    this.pendingEchoes.set(key, {
+      count: current.count + 1,
+      expiresAt: Date.now() + 15000,
+    });
+  }
+
+  consumePendingEcho(conversationId) {
+    const key = String(conversationId);
+    const current = this.pendingEchoes.get(key);
+    if (!current) return false;
+    if (current.expiresAt < Date.now()) {
+      this.pendingEchoes.delete(key);
+      return false;
+    }
+    if (current.count <= 1) {
+      this.pendingEchoes.delete(key);
+    } else {
+      this.pendingEchoes.set(key, {
+        count: current.count - 1,
+        expiresAt: current.expiresAt,
+      });
+    }
+    return true;
+  }
+
   async sendText(conversationId, text) {
     const mapping = this.store.getByConversation(conversationId);
     if (!mapping) throw new Error('Conversation not mapped');
     const messageText = cleanMessageText(text);
-    await this.zalo.sendText({
-      conversationId: mapping.conversationId,
-      threadType: mapping.threadType,
-      text: messageText,
-    });
+    this.registerPendingEcho(mapping.conversationId);
+    try {
+      await this.zalo.sendText({
+        conversationId: mapping.conversationId,
+        threadType: mapping.threadType,
+        text: messageText,
+      });
+    } catch (error) {
+      this.consumePendingEcho(mapping.conversationId);
+      throw error;
+    }
     return this.recordTranscript(mapping, {
       direction: 'out',
       source: 'gui',
@@ -132,12 +171,18 @@ export class BridgeController extends EventEmitter {
   async sendImage(conversationId, filePath, caption = '') {
     const mapping = this.store.getByConversation(conversationId);
     if (!mapping) throw new Error('Conversation not mapped');
-    await this.zalo.sendImage({
-      conversationId: mapping.conversationId,
-      threadType: mapping.threadType,
-      filePath,
-      caption,
-    });
+    this.registerPendingEcho(mapping.conversationId);
+    try {
+      await this.zalo.sendImage({
+        conversationId: mapping.conversationId,
+        threadType: mapping.threadType,
+        filePath,
+        caption,
+      });
+    } catch (error) {
+      this.consumePendingEcho(mapping.conversationId);
+      throw error;
+    }
     return this.recordTranscript(mapping, {
       direction: 'out',
       source: 'gui',
