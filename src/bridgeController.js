@@ -38,6 +38,7 @@ export class BridgeController extends EventEmitter {
       this.zalo = await new ZaloClient({
         credentialsFile: this.account.zaloCredentialsFile,
         loginMode: this.account.zaloLoginMode,
+        selfListen: this.account.zaloSelfListen !== false,
         logger: this.logger.child({ scope: `${this.account.label}/zalo` }),
       }).connect();
 

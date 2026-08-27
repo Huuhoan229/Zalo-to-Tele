@@ -43,5 +43,6 @@ export const config = {
     fs.existsSync(optionalPath('ZALO_CREDENTIALS_FILE', 'sessions/zalo-credentials.json'))
       ? 'auto'
       : process.env.ZALO_LOGIN_MODE?.trim() || 'auto',
+  zaloSelfListen: process.env.ZALO_SELF_LISTEN?.trim() !== 'false',
   logLevel: process.env.LOG_LEVEL?.trim() || 'info',
 };

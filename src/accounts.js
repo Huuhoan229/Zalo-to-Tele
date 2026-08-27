@@ -37,6 +37,7 @@ export function normalizeAccount(input, baseDir = process.cwd()) {
     allowedTelegramUserIds: String(input.allowedTelegramUserIds || '').trim(),
     zaloLoginMode:
       loginMode === 'qr' && existsSync(path.resolve(baseDir, credentialsFile)) ? 'auto' : loginMode,
+    zaloSelfListen: input.zaloSelfListen !== false,
     zaloCredentialsFile: credentialsFile,
     dataFile: String(input.dataFile || defaultPaths.dataFile),
     downloadDir: String(input.downloadDir || defaultPaths.downloadDir),
@@ -63,6 +64,7 @@ export function createSeedAccountFromEnv(baseDir = process.cwd()) {
       telegramForumChatId: Number(forumChatId),
       allowedTelegramUserIds: process.env.ALLOWED_TELEGRAM_USER_IDS?.trim() || '',
       zaloLoginMode: process.env.ZALO_LOGIN_MODE?.trim() || 'auto',
+      zaloSelfListen: process.env.ZALO_SELF_LISTEN?.trim() !== 'false',
       zaloCredentialsFile: process.env.ZALO_CREDENTIALS_FILE?.trim() || '',
       dataFile: process.env.DATA_FILE?.trim() || '',
       downloadDir: process.env.DOWNLOAD_DIR?.trim() || '',

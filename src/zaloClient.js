@@ -56,16 +56,20 @@ function normalizeAttachment(content) {
 }
 
 export class ZaloClient {
-  constructor({ credentialsFile, loginMode, logger }) {
+  constructor({ credentialsFile, loginMode, selfListen = true, logger }) {
     this.credentialsFile = credentialsFile;
     this.loginMode = loginMode;
+    this.selfListen = selfListen;
     this.logger = logger;
     this.api = null;
     this.ThreadType = ThreadType;
   }
 
   async connect() {
-    const zalo = new Zalo({ imageMetadataGetter });
+    const zalo = new Zalo({
+      imageMetadataGetter,
+      selfListen: this.selfListen,
+    });
 
     if (this.loginMode === 'cookie' || this.loginMode === 'auto') {
       try {

@@ -22,6 +22,7 @@ async function main() {
   const zalo = await new ZaloClient({
     credentialsFile: config.zaloCredentialsFile,
     loginMode: config.zaloLoginMode,
+    selfListen: config.zaloSelfListen,
     logger,
   }).connect();
 
