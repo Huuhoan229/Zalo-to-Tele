@@ -1,0 +1,172 @@
+import { EventEmitter } from 'node:events';
+import { Store } from './store.js';
+import { ZaloClient } from './zaloClient.js';
+import { TelegramBridgeBot } from './telegramBot.js';
+import { createLogger } from './logger.js';
+
+function cleanMessageText(text) {
+  return String(text || '').trim();
+}
+
+export class BridgeController extends EventEmitter {
+  constructor(account, options = {}) {
+    super();
+    this.account = account;
+    this.baseDir = options.baseDir || process.cwd();
+    this.onLog = options.onLog;
+    this.onState = options.onState;
+    this.logger = options.logger || createLogger({ scope: account.label, onLog: this.onLog });
+    this.store = new Store(account.dataFile);
+    this.zalo = null;
+    this.telegram = null;
+    this.status = 'idle';
+    this.lastError = null;
+    this.startedAt = null;
+    this.ready = this.store.load();
+  }
+
+  async start() {
+    if (this.status === 'running' || this.status === 'starting') return this.snapshot();
+    this.status = 'starting';
+    this.lastError = null;
+    this.emitChange();
+
+    await this.ready;
+
+    try {
+      this.zalo = await new ZaloClient({
+        credentialsFile: this.account.zaloCredentialsFile,
+        loginMode: this.account.zaloLoginMode,
+        logger: this.logger.child({ scope: `${this.account.label}/zalo` }),
+      }).connect();
+
+      this.telegram = new TelegramBridgeBot({
+        config: {
+          telegramBotToken: this.account.telegramBotToken,
+          telegramForumChatId: this.account.telegramForumChatId,
+          allowedTelegramUserIds: new Set(
+            String(this.account.allowedTelegramUserIds || '')
+              .split(',')
+              .map((item) => item.trim())
+              .filter(Boolean)
+              .map((item) => Number(item))
+              .filter((item) => Number.isSafeInteger(item)),
+          ),
+          downloadDir: this.account.downloadDir,
+        },
+        store: this.store,
+        zalo: this.zalo,
+        logger: this.logger.child({ scope: `${this.account.label}/telegram` }),
+        onTranscript: async (mapping, entry) => this.recordTranscript(mapping, entry),
+      });
+
+      this.zalo.onMessage(async (message) => {
+        await this.telegram.forwardZaloMessage(message);
+      });
+
+      await this.telegram.start();
+      this.startedAt = new Date().toISOString();
+      this.status = 'running';
+      this.emitChange();
+      return this.snapshot();
+    } catch (error) {
+      this.status = 'error';
+      this.lastError = error?.message || String(error);
+      this.logger.error({ error }, 'Bridge failed to start');
+      this.emitChange();
+      throw error;
+    }
+  }
+
+  async stop() {
+    try {
+      this.telegram?.stop('manual');
+      this.zalo?.stop();
+    } finally {
+      this.status = 'stopped';
+      this.emitChange();
+    }
+  }
+
+  async recordTranscript(mapping, entry) {
+    const stored = await this.store.appendMessage(mapping.conversationId, {
+      id: entry.id,
+      direction: entry.direction,
+      source: entry.source,
+      senderName: entry.senderName,
+      text: cleanMessageText(entry.text),
+      attachment: entry.attachment || null,
+      topicId: mapping.topicId,
+      threadType: mapping.threadType,
+      createdAt: entry.createdAt,
+    });
+
+    this.emit('transcript', {
+      accountId: this.account.id,
+      conversationId: mapping.conversationId,
+      message: stored,
+      mapping,
+    });
+    this.emitChange();
+    return stored;
+  }
+
+  async sendText(conversationId, text) {
+    const mapping = this.store.getByConversation(conversationId);
+    if (!mapping) throw new Error('Conversation not mapped');
+    const messageText = cleanMessageText(text);
+    await this.zalo.sendText({
+      conversationId: mapping.conversationId,
+      threadType: mapping.threadType,
+      text: messageText,
+    });
+    return this.recordTranscript(mapping, {
+      direction: 'out',
+      source: 'gui',
+      senderName: this.account.label,
+      text: messageText,
+      attachment: null,
+    });
+  }
+
+  async sendImage(conversationId, filePath, caption = '') {
+    const mapping = this.store.getByConversation(conversationId);
+    if (!mapping) throw new Error('Conversation not mapped');
+    await this.zalo.sendImage({
+      conversationId: mapping.conversationId,
+      threadType: mapping.threadType,
+      filePath,
+      caption,
+    });
+    return this.recordTranscript(mapping, {
+      direction: 'out',
+      source: 'gui',
+      senderName: this.account.label,
+      text: cleanMessageText(caption),
+      attachment: { url: filePath, title: filePath.split(/[\\/]/).pop() || 'image' },
+    });
+  }
+
+  getConversationList() {
+    return this.store.listConversations();
+  }
+
+  getConversationMessages(conversationId) {
+    return this.store.listMessages(conversationId);
+  }
+
+  snapshot() {
+    return {
+      ...this.account,
+      status: this.status,
+      startedAt: this.startedAt,
+      lastError: this.lastError,
+      conversations: this.getConversationList(),
+    };
+  }
+
+  emitChange() {
+    this.onState?.();
+    this.emit('change', this.snapshot());
+  }
+}

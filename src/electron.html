@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self';" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Zalo-to-Tele</title>
+    <link rel="stylesheet" href="./electron.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div class="brand">
+          <div class="brand-mark"></div>
+          <div>
+            <div class="brand-title">Zalo-to-Tele</div>
+            <div class="brand-subtitle">topic router</div>
+          </div>
+        </div>
+        <div class="toolbar">
+          <button id="start-all">Start all</button>
+          <button id="stop-all">Stop all</button>
+          <button id="add-account">Add account</button>
+          <button id="refresh">Refresh</button>
+        </div>
+      </header>
+      <main class="workspace">
+        <section class="panel accounts-panel">
+          <div class="panel-head">
+            <div>
+              <h2>Accounts</h2>
+              <p>One Zalo profile per bridge instance.</p>
+            </div>
+          </div>
+          <div id="accounts-list" class="stack"></div>
+          <form id="account-form" class="account-form hidden">
+            <div class="form-grid">
+              <label>
+                <span>Label</span>
+                <input name="label" placeholder="Primary" required />
+              </label>
+              <label>
+                <span>Bot token</span>
+                <input name="telegramBotToken" placeholder="123456:ABC..." required />
+              </label>
+              <label>
+                <span>Forum chat id</span>
+                <input name="telegramForumChatId" placeholder="-100123..." required />
+              </label>
+              <label>
+                <span>Allowed user ids</span>
+                <input name="allowedTelegramUserIds" placeholder="123,456" />
+              </label>
+              <label>
+                <span>Login mode</span>
+                <select name="zaloLoginMode">
+                  <option value="auto">Auto</option>
+                  <option value="qr">QR</option>
+                  <option value="cookie">Cookie</option>
+                </select>
+              </label>
+              <label class="checkbox-row">
+                <input type="checkbox" name="autoStart" checked />
+                <span>Auto start</span>
+              </label>
+            </div>
+            <div class="row actions">
+              <button type="submit">Save account</button>
+              <button type="button" id="cancel-add" class="ghost">Cancel</button>
+            </div>
+          </form>
+        </section>
+
+        <section class="panel topics-panel">
+          <div class="panel-head">
+            <div>
+              <h2>Topics</h2>
+              <p id="topics-subtitle">Select an account.</p>
+            </div>
+          </div>
+          <div id="topics-list" class="stack"></div>
+        </section>
+
+        <section class="panel chat-panel">
+          <div class="panel-head">
+            <div>
+              <h2 id="chat-title">Conversation</h2>
+              <p id="chat-meta">Open a topic to review or reply.</p>
+            </div>
+          </div>
+          <div id="messages-list" class="messages"></div>
+          <form id="composer" class="composer">
+            <button type="button" id="attach-image" class="ghost">Attach image</button>
+            <input id="message-input" name="message" placeholder="Type a message" autocomplete="off" />
+            <button type="submit">Send</button>
+          </form>
+          <div id="attachment-bar" class="attachment-bar hidden"></div>
+        </section>
+
+        <aside class="panel logs-panel">
+          <div class="panel-head">
+            <div>
+              <h2>Logs</h2>
+              <p>Live bridge activity.</p>
+            </div>
+          </div>
+          <div id="log-list" class="logs"></div>
+        </aside>
+      </main>
+    </div>
+    <script type="module" src="./electron-renderer.js"></script>
+  </body>
+</html>

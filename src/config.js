@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import 'dotenv/config';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -34,9 +35,13 @@ export const config = {
   telegramBotToken: required('TELEGRAM_BOT_TOKEN'),
   telegramForumChatId: Number(required('TELEGRAM_FORUM_CHAT_ID')),
   allowedTelegramUserIds: parseAllowedUsers(process.env.ALLOWED_TELEGRAM_USER_IDS),
-  zaloLoginMode: process.env.ZALO_LOGIN_MODE?.trim() || 'qr',
   zaloCredentialsFile: optionalPath('ZALO_CREDENTIALS_FILE', 'sessions/zalo-credentials.json'),
   dataFile: optionalPath('DATA_FILE', 'data/store.json'),
   downloadDir: optionalPath('DOWNLOAD_DIR', 'downloads'),
+  zaloLoginMode:
+    process.env.ZALO_LOGIN_MODE?.trim() === 'qr' &&
+    fs.existsSync(optionalPath('ZALO_CREDENTIALS_FILE', 'sessions/zalo-credentials.json'))
+      ? 'auto'
+      : process.env.ZALO_LOGIN_MODE?.trim() || 'auto',
   logLevel: process.env.LOG_LEVEL?.trim() || 'info',
 };

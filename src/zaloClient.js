@@ -67,44 +67,56 @@ export class ZaloClient {
   async connect() {
     const zalo = new Zalo({ imageMetadataGetter });
 
-    if (this.loginMode === 'cookie') {
-      const raw = await fs.readFile(this.credentialsFile, 'utf8');
-      const credentials = JSON.parse(raw);
-      this.api = await zalo.login(credentials);
-    } else {
-      await fs.mkdir(path.dirname(this.credentialsFile), { recursive: true });
-      const qrPath = path.join(path.dirname(this.credentialsFile), 'zalo-qr.png');
-      this.api = await zalo.loginQR({ qrPath }, async (event) => {
-        if (event.type === LoginQRCallbackEventType.QRCodeGenerated) {
-          await event.actions.saveToFile(qrPath);
-          this.logger.info({ qrPath }, 'Zalo QR generated. Open this file and scan it with Zalo mobile.');
-        }
+    if (this.loginMode === 'cookie' || this.loginMode === 'auto') {
+      try {
+        const raw = await fs.readFile(this.credentialsFile, 'utf8');
+        const credentials = JSON.parse(raw);
+        this.api = await zalo.login(credentials);
+        this.logger.info({ credentialsFile: this.credentialsFile }, 'Logged into Zalo with saved credentials.');
+      } catch (error) {
+        if (this.loginMode === 'cookie') throw error;
+        this.logger.warn({ error }, 'Saved Zalo credentials unavailable; falling back to QR login.');
+      }
+    }
 
-        if (event.type === LoginQRCallbackEventType.QRCodeScanned) {
-          this.logger.info({ account: event.data.display_name }, 'Zalo QR scanned. Confirm login on mobile.');
-        }
-
-        if (event.type === LoginQRCallbackEventType.GotLoginInfo) {
-          await fs.writeFile(
-            this.credentialsFile,
-            `${JSON.stringify(
-              {
-                cookie: event.data.cookie,
-                imei: event.data.imei,
-                userAgent: event.data.userAgent,
-              },
-              null,
-              2,
-            )}\n`,
-            'utf8',
-          );
-          this.logger.info({ credentialsFile: this.credentialsFile }, 'Zalo credentials saved.');
-        }
-      });
+    if (!this.api) {
+      await this.loginWithQr(zalo);
     }
 
     this.logger.info('Connected to Zalo');
     return this;
+  }
+
+  async loginWithQr(zalo) {
+    await fs.mkdir(path.dirname(this.credentialsFile), { recursive: true });
+    const qrPath = path.join(path.dirname(this.credentialsFile), 'zalo-qr.png');
+    this.api = await zalo.loginQR({ qrPath }, async (event) => {
+      if (event.type === LoginQRCallbackEventType.QRCodeGenerated) {
+        await event.actions.saveToFile(qrPath);
+        this.logger.info({ qrPath }, 'Zalo QR generated. Open this file and scan it with Zalo mobile.');
+      }
+
+      if (event.type === LoginQRCallbackEventType.QRCodeScanned) {
+        this.logger.info({ account: event.data.display_name }, 'Zalo QR scanned. Confirm login on mobile.');
+      }
+
+      if (event.type === LoginQRCallbackEventType.GotLoginInfo) {
+        await fs.writeFile(
+          this.credentialsFile,
+          `${JSON.stringify(
+            {
+              cookie: event.data.cookie,
+              imei: event.data.imei,
+              userAgent: event.data.userAgent,
+            },
+            null,
+            2,
+          )}\n`,
+          'utf8',
+        );
+        this.logger.info({ credentialsFile: this.credentialsFile }, 'Zalo credentials saved.');
+      }
+    });
   }
 
   onMessage(handler) {
@@ -120,6 +132,10 @@ export class ZaloClient {
     });
 
     this.api.listener.start();
+  }
+
+  stop() {
+    this.api?.listener?.stop?.();
   }
 
   async normalizeMessage(message) {

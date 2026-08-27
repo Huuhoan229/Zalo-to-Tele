@@ -45,19 +45,29 @@ npm install
 npm start
 ```
 
-For first Zalo login, keep `ZALO_LOGIN_MODE=qr`. The app writes the QR to:
+`npm start` opens the desktop app with:
+
+- accounts list
+- topic list
+- chat panel
+- live logs
+- tray icon
+
+The old console runner is still available:
+
+```bash
+npm run cli
+```
+
+For first Zalo login, the app uses `auto` by default: saved cookie first, QR if no session exists. The app writes the QR to:
 
 ```text
 sessions/zalo-qr.png
 ```
 
-Scan it with Zalo mobile and confirm login. After a successful login, credentials are saved to `sessions/zalo-credentials.json`; later you can switch to:
+Scan it with Zalo mobile and confirm login. After a successful login, credentials are saved to `sessions/.../zalo-credentials.json`.
 
-```env
-ZALO_LOGIN_MODE=cookie
-```
-
-Only one Zalo Web listener can run per account at the same time.
+One bridge instance can run per account. If you add more accounts in the GUI, each one gets its own Telegram bot token and forum chat id.
 
 ## Telegram Usage
 

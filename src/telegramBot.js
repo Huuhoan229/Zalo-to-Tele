@@ -18,11 +18,12 @@ function formatZaloMessage(zaloMessage) {
 }
 
 export class TelegramBridgeBot {
-  constructor({ config, store, zalo, logger }) {
+  constructor({ config, store, zalo, logger, onTranscript }) {
     this.config = config;
     this.store = store;
     this.zalo = zalo;
     this.logger = logger;
+    this.onTranscript = onTranscript;
     this.bot = new Telegraf(config.telegramBotToken);
   }
 
@@ -137,6 +138,14 @@ export class TelegramBridgeBot {
           options,
         );
       }
+      await this.onTranscript?.(mapping, {
+        direction: 'in',
+        source: 'zalo',
+        senderName: zaloMessage.senderName,
+        text: zaloMessage.text,
+        attachment: zaloMessage.attachment,
+        threadType: zaloMessage.threadType,
+      });
       return;
     }
 
@@ -145,6 +154,14 @@ export class TelegramBridgeBot {
       formatZaloMessage(zaloMessage),
       options,
     );
+    await this.onTranscript?.(mapping, {
+      direction: 'in',
+      source: 'zalo',
+      senderName: zaloMessage.senderName,
+      text: zaloMessage.text,
+      attachment: zaloMessage.attachment,
+      threadType: zaloMessage.threadType,
+    });
   }
 
   async forwardTelegramText(ctx) {
@@ -159,6 +176,14 @@ export class TelegramBridgeBot {
       conversationId: mapping.conversationId,
       threadType: mapping.threadType,
       text: ctx.message.text,
+    });
+    await this.onTranscript?.(mapping, {
+      direction: 'out',
+      source: 'telegram',
+      senderName: ctx.from?.username || ctx.from?.first_name || String(ctx.from?.id || 'Telegram'),
+      text: ctx.message.text,
+      attachment: null,
+      threadType: mapping.threadType,
     });
   }
 
@@ -178,6 +203,17 @@ export class TelegramBridgeBot {
       threadType: mapping.threadType,
       filePath: targetPath,
       caption: ctx.message.caption,
+    });
+    await this.onTranscript?.(mapping, {
+      direction: 'out',
+      source: 'telegram',
+      senderName: ctx.from?.username || ctx.from?.first_name || String(ctx.from?.id || 'Telegram'),
+      text: ctx.message.caption || '',
+      attachment: {
+        url: targetPath,
+        title: ctx.message.document.file_name || 'image',
+      },
+      threadType: mapping.threadType,
     });
   }
 
@@ -203,6 +239,17 @@ export class TelegramBridgeBot {
       threadType: mapping.threadType,
       filePath: targetPath,
       caption: ctx.message.caption,
+    });
+    await this.onTranscript?.(mapping, {
+      direction: 'out',
+      source: 'telegram',
+      senderName: ctx.from?.username || ctx.from?.first_name || String(ctx.from?.id || 'Telegram'),
+      text: ctx.message.caption || '',
+      attachment: {
+        url: targetPath,
+        title: ctx.message.document.file_name || 'image',
+      },
+      threadType: mapping.threadType,
     });
   }
 
