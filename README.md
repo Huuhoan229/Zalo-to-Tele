@@ -1,4 +1,4 @@
-# ChatTeleZola
+# Zalo-to-Tele
 
 Bridge Telegram <-> Zalo personal account, using one Telegram forum topic per Zalo conversation.
 
@@ -18,14 +18,25 @@ Bridge Telegram <-> Zalo personal account, using one Telegram forum topic per Za
 1. Create a Telegram bot with BotFather and copy the token.
 2. Create a Telegram group, enable **Topics** in group settings, and add the bot as admin.
 3. Copy `.env.example` to `.env`.
-4. Fill:
+4. Fill the bot token first:
 
 ```env
 TELEGRAM_BOT_TOKEN=...
-TELEGRAM_FORUM_CHAT_ID=-100...
 ```
 
-To get the group id, add the bot to the group and send `/id` in the group.
+5. Get the Telegram group id:
+
+```bash
+npm run telegram:id
+```
+
+Send `/id` in the Telegram forum group. Copy the `chat_id`, then stop the helper with `Ctrl+C`.
+
+6. Fill the forum group id:
+
+```env
+TELEGRAM_FORUM_CHAT_ID=-100...
+```
 
 ## Run
 
@@ -67,7 +78,7 @@ For Zalo group chats, all members stay in the same topic and the sender name is 
 If you already have a GitHub remote:
 
 ```bash
-git remote add origin https://github.com/YOUR_USER/ChatTeleZola.git
+git remote add origin https://github.com/YOUR_USER/Zalo-to-Tele.git
 git branch -M main
 git push -u origin main
 ```

@@ -1,5 +1,5 @@
 {
-  "name": "chattelezola",
+  "name": "zalo-to-tele",
   "version": "0.1.0",
   "description": "Telegram forum-topic bridge for a personal Zalo account.",
   "type": "module",
@@ -7,7 +7,8 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",
-    "check": "node --check src/index.js && node --check src/config.js && node --check src/store.js && node --check src/telegramBot.js && node --check src/zaloClient.js && node --check src/media.js"
+    "telegram:id": "node src/telegramIdBot.js",
+    "check": "node --check src/index.js && node --check src/config.js && node --check src/store.js && node --check src/telegramBot.js && node --check src/zaloClient.js && node --check src/media.js && node --check src/telegramIdBot.js"
   },
   "keywords": [
     "telegram",
